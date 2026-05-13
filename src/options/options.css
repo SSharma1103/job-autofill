@@ -144,6 +144,8 @@ label {
 
 input,
 textarea {
+  appearance: none;
+  -webkit-appearance: none;
   width: 100%;
   border: 1px solid #334030;
   border-radius: 6px;
@@ -227,6 +229,8 @@ input[type="file"]::file-selector-button {
 }
 
 button {
+  appearance: none;
+  -webkit-appearance: none;
   min-height: 38px;
   padding: 8px 13px;
   border: 1px solid #334030;

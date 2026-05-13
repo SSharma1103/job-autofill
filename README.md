@@ -2,6 +2,12 @@
 
 A Chrome extension MVP that detects fields on job application pages, maps them to a saved candidate profile, and fills the page for manual review. It also includes an optional cover-letter workflow and a small SDK pipeline that can be tested independently.
 
+## Screenshots
+
+| Popup card | Settings page |
+| --- | --- |
+| ![Job Form Filler popup card](docs/screenshots/popup-card.png) | ![Job Form Filler settings page](docs/screenshots/settings-page.png) |
+
 ## Features
 
 - Detects input, textarea, select, checkbox, radio, and file fields on job forms.

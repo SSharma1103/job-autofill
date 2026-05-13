@@ -86,11 +86,14 @@ h1 {
 }
 
 button {
+  appearance: none;
+  -webkit-appearance: none;
   min-height: 36px;
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: rgba(18, 24, 19, 0.92);
+  background-color: rgba(18, 24, 19, 0.92);
+  background-image: none;
   color: var(--text);
   cursor: pointer;
   font: inherit;
@@ -116,8 +119,16 @@ pre:focus-visible {
 }
 
 #optionsButton {
+  background-color: rgba(18, 24, 19, 0.92);
+  background-image: none;
   color: var(--muted);
   font-size: 12px;
+}
+
+#previewButton {
+  background-color: rgba(18, 24, 19, 0.92);
+  background-image: none;
+  color: var(--muted);
 }
 
 #fillButton {
