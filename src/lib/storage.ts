@@ -40,11 +40,11 @@ export async function saveResumeText(text: string): Promise<void> {
 
 export async function getResumeFile(): Promise<StoredResumeFile | undefined> {
   const data = await chrome.storage.local.get(RESUME_FILE_KEY);
-  return data[RESUME_FILE_KEY] as StoredResumeFile | undefined;
+  return (data[RESUME_FILE_KEY] as StoredResumeFile | null | undefined) ?? undefined;
 }
 
 export async function saveResumeFile(file: StoredResumeFile | undefined): Promise<void> {
-  await chrome.storage.local.set({ [RESUME_FILE_KEY]: file });
+  await chrome.storage.local.set({ [RESUME_FILE_KEY]: file ?? null });
 }
 
 export async function getCoverLetterWorkspace(): Promise<CoverLetterWorkspace> {
@@ -53,9 +53,24 @@ export async function getCoverLetterWorkspace(): Promise<CoverLetterWorkspace> {
 }
 
 export async function saveCoverLetterWorkspace(workspace: CoverLetterWorkspace): Promise<void> {
-  await chrome.storage.local.set({ [COVER_LETTER_WORKSPACE_KEY]: workspace });
+  await chrome.storage.local.set({ [COVER_LETTER_WORKSPACE_KEY]: removeUndefinedValues(workspace) });
 }
 
 export async function clearAllData(): Promise<void> {
   await chrome.storage.local.clear();
+}
+
+function removeUndefinedValues<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => removeUndefinedValues(item)) as T;
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, item]) => item !== undefined)
+      .map(([key, item]) => [key, removeUndefinedValues(item)]),
+  ) as T;
 }

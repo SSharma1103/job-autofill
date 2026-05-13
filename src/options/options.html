@@ -15,7 +15,7 @@
       </header>
 
       <form id="settingsForm">
-        <section>
+        <section class="profile-section">
           <h2>Profile</h2>
           <div class="grid">
             <label>Full name <input name="fullName" autocomplete="name" /></label>
@@ -34,7 +34,7 @@
           </div>
         </section>
 
-        <section>
+        <section class="resume-section">
           <h2>Resume</h2>
           <div class="resume-file">
             <label>Resume PDF <input name="resumePdf" type="file" accept="application/pdf,.pdf" /></label>
@@ -46,23 +46,19 @@
           <label>Resume text <textarea name="resumeText" rows="8"></textarea></label>
         </section>
 
-        <section id="coverLetterSection">
+        <section id="coverLetterSection" class="cover-letter-section">
           <h2>Cover letter</h2>
           <div id="coverLetterContext" class="cover-context">No preview context yet.</div>
           <label>Focus on <textarea id="coverLetterFocus" rows="3" placeholder="Anything the cover letter should emphasize"></textarea></label>
+          <label>Live editor <textarea id="coverLetterOutput" rows="14"></textarea></label>
+          <label>Tell AI what to do <textarea id="coverLetterMessage" rows="3" placeholder="Draft a tailored letter, make this shorter, or emphasize backend experience"></textarea></label>
           <div class="inline-actions">
-            <button id="generateCoverLetter" type="button">Generate cover letter</button>
+            <button id="coverLetterAiButton" type="button">Ask AI</button>
+            <button id="clearCoverLetter" type="button">Clear editor</button>
           </div>
-          <label>Draft <textarea id="coverLetterOutput" rows="10"></textarea></label>
-          <label>Iterate <textarea id="coverLetterMessage" rows="3" placeholder="Ask for changes to the draft"></textarea></label>
-          <div class="inline-actions">
-            <button id="sendCoverLetterMessage" type="button">Send message</button>
-            <button id="clearCoverLetter" type="button">Clear thread</button>
-          </div>
-          <div id="coverLetterThread" class="cover-thread"></div>
         </section>
 
-        <section>
+        <section class="custom-section">
           <div class="section-heading">
             <h2>Custom fields</h2>
             <button id="addCustomField" type="button">Add field</button>
@@ -70,7 +66,7 @@
           <div id="customFields" class="custom-fields"></div>
         </section>
 
-        <section>
+        <section class="api-section">
           <h2>API</h2>
           <div class="grid">
             <label>OpenAI API key <input name="openaiApiKey" type="password" autocomplete="off" /></label>

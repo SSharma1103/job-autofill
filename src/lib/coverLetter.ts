@@ -1,4 +1,4 @@
-import type { CoverLetterMessage, PageField, UserProfile } from "./types.js";
+import type { PageField, UserProfile } from "./types.js";
 
 type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -19,7 +19,8 @@ export async function generateCoverLetter(input: {
   profile: UserProfile;
   resumeText: string;
   focus?: string;
-  messages: CoverLetterMessage[];
+  currentDraft?: string;
+  instruction?: string;
 }): Promise<string> {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -44,30 +45,37 @@ export async function generateCoverLetter(input: {
   return text;
 }
 
-function buildMessages(input: {
+export function buildMessages(input: {
   pageUrl?: string;
   fields: PageField[];
   previewText: string;
   profile: UserProfile;
   resumeText: string;
   focus?: string;
-  messages: CoverLetterMessage[];
+  currentDraft?: string;
+  instruction?: string;
 }): ChatMessage[] {
+  const task = input.currentDraft
+    ? "Revise the current cover letter draft according to the editor instruction. Return only the full revised cover letter."
+    : "Draft a cover letter. Return only the cover letter.";
+
   return [
     {
       role: "system",
       content:
-        "You write concise, truthful cover letters for job applications. Use only the provided profile, resume, page preview, and user instructions. Do not invent companies, dates, credentials, metrics, or experience. If details are missing, keep the wording general.",
+        "You write concise, truthful cover letters for job applications. Use the provided resume text as source material when available and incorporate relevant resume details into the letter. Use only the provided profile, resume, page preview, current draft, and user instructions. Do not invent companies, dates, credentials, metrics, or experience. If details are missing, keep the wording general.",
     },
     {
       role: "user",
       content: JSON.stringify(
         {
-          task: "Draft or revise a cover letter.",
+          task,
           pageUrl: input.pageUrl,
           focus: input.focus,
+          instruction: input.instruction,
           profile: input.profile,
-          resumeText: input.resumeText.slice(0, 8000),
+          resumeTextForCoverLetter: input.resumeText.slice(0, 8000),
+          currentDraft: input.currentDraft,
           preview: input.previewText,
           fields: input.fields,
         },
@@ -75,6 +83,5 @@ function buildMessages(input: {
         2,
       ),
     },
-    ...input.messages.map((message): ChatMessage => ({ role: message.role, content: message.content })),
   ];
 }

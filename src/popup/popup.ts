@@ -70,7 +70,8 @@ async function openCoverLetterSettings(): Promise<void> {
         capturedAt: new Date().toISOString(),
       },
       generateOnOpen: true,
-      messages: [],
+      draft: undefined,
+      messages: undefined,
     });
     chrome.runtime.openOptionsPage();
     setSummary("Cover letter context sent to settings.");

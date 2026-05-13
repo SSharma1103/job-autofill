@@ -25,6 +25,7 @@ export type CoverLetterMessage = {
 
 export type CoverLetterWorkspace = {
   context?: CoverLetterContext;
+  draft?: string;
   focus?: string;
   generateOnOpen?: boolean;
   messages?: CoverLetterMessage[];

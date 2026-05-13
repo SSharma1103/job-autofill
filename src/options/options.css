@@ -192,7 +192,8 @@ input[type="file"]::file-selector-button {
 
 .resume-file {
   display: grid;
-  gap: 11px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   margin-bottom: 15px;
 }
 
@@ -223,25 +224,6 @@ input[type="file"]::file-selector-button {
   flex-wrap: wrap;
   gap: 10px;
   margin: 11px 0 15px;
-}
-
-.cover-thread {
-  display: grid;
-  gap: 9px;
-}
-
-.thread-message {
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: rgba(8, 12, 9, 0.76);
-  color: #dce8d5;
-  white-space: pre-wrap;
-}
-
-.thread-message.user {
-  border-color: rgba(184, 255, 46, 0.28);
-  background: rgba(184, 255, 46, 0.07);
 }
 
 button {
@@ -280,8 +262,7 @@ button:disabled {
 }
 
 #saveButton,
-#generateCoverLetter,
-#sendCoverLetterMessage {
+#coverLetterAiButton {
   border-color: var(--acid);
   background: var(--acid);
   color: #101707;
@@ -289,8 +270,7 @@ button:disabled {
 }
 
 #saveButton:hover,
-#generateCoverLetter:hover,
-#sendCoverLetterMessage:hover {
+#coverLetterAiButton:hover {
   background: #d7ff75;
 }
 
@@ -366,14 +346,19 @@ footer {
 
 .custom-fields {
   display: grid;
-  gap: 10px;
+  min-height: 72px;
+  gap: 12px;
 }
 
 .custom-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(160px, 1fr)) auto;
+  gap: 12px;
   align-items: end;
+}
+
+.custom-row button {
+  min-width: 92px;
 }
 
 footer {
@@ -381,8 +366,8 @@ footer {
   bottom: 0;
   z-index: 2;
   justify-content: flex-start;
-  padding: 14px 0 0;
-  background: linear-gradient(180deg, transparent, var(--ink) 38%);
+  padding: 14px 0 16px;
+  background: linear-gradient(180deg, transparent, var(--ink) 32%);
 }
 
 @media (min-width: 980px) {
@@ -391,9 +376,17 @@ footer {
     align-items: start;
   }
 
-  section:first-of-type,
-  #coverLetterSection {
+  .profile-section,
+  .resume-section,
+  .cover-letter-section,
+  .custom-section,
+  .api-section,
+  footer {
     grid-column: 1 / -1;
+  }
+
+  .resume-section textarea[name="resumeText"] {
+    min-height: 180px;
   }
 }
 

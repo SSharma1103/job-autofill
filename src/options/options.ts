@@ -13,8 +13,8 @@ import {
   saveSettings,
 } from "../lib/storage.js";
 import { generateCoverLetter } from "../lib/coverLetter.js";
-import { parseResumePdfWithOpenAI } from "../lib/resumeParser.js";
-import type { CoverLetterMessage, CoverLetterWorkspace, ExtensionSettings, StoredResumeFile, UserProfile } from "../lib/types.js";
+import { parseResumePdfStructuredWithOpenAI } from "../lib/resumeParser.js";
+import type { CoverLetterWorkspace, ExtensionSettings, StoredResumeFile, UserProfile } from "../lib/types.js";
 
 const form = document.querySelector<HTMLFormElement>("#settingsForm");
 const customFields = document.querySelector<HTMLElement>("#customFields");
@@ -27,13 +27,27 @@ const coverLetterContext = document.querySelector<HTMLElement>("#coverLetterCont
 const coverLetterFocus = document.querySelector<HTMLTextAreaElement>("#coverLetterFocus");
 const coverLetterOutput = document.querySelector<HTMLTextAreaElement>("#coverLetterOutput");
 const coverLetterMessage = document.querySelector<HTMLTextAreaElement>("#coverLetterMessage");
-const coverLetterThread = document.querySelector<HTMLElement>("#coverLetterThread");
-const generateCoverLetterButton = document.querySelector<HTMLButtonElement>("#generateCoverLetter");
-const sendCoverLetterMessageButton = document.querySelector<HTMLButtonElement>("#sendCoverLetterMessage");
+const coverLetterAiButton = document.querySelector<HTMLButtonElement>("#coverLetterAiButton");
 const clearCoverLetterButton = document.querySelector<HTMLButtonElement>("#clearCoverLetter");
 const status = document.querySelector<HTMLElement>("#status");
 let selectedResumeFile: StoredResumeFile | undefined;
 let coverLetterWorkspace: CoverLetterWorkspace = {};
+
+const PROFILE_FIELDS: Array<Exclude<keyof UserProfile, "customFields">> = [
+  "fullName",
+  "email",
+  "phone",
+  "linkedin",
+  "github",
+  "portfolio",
+  "location",
+  "currentCompany",
+  "currentRole",
+  "yearsOfExperience",
+  "skills",
+  "expectedSalary",
+  "noticePeriod",
+];
 
 void init();
 
@@ -46,7 +60,10 @@ async function init(): Promise<void> {
     getCoverLetterWorkspace(),
   ]);
   selectedResumeFile = resumeFile;
-  coverLetterWorkspace = savedCoverLetterWorkspace;
+  coverLetterWorkspace = normalizeCoverLetterWorkspace(savedCoverLetterWorkspace);
+  if (savedCoverLetterWorkspace.messages?.length) {
+    await saveCoverLetterWorkspace(coverLetterWorkspace);
+  }
   populateProfile(profile);
   populateSettings(settings);
   setInputValue("resumeText", resumeText);
@@ -62,9 +79,8 @@ async function init(): Promise<void> {
   if (resumePdfInput instanceof HTMLInputElement) {
     resumePdfInput.addEventListener("change", (event: Event) => void readResumePdf(event));
   }
-  generateCoverLetterButton?.addEventListener("click", () => void createCoverLetter());
-  sendCoverLetterMessageButton?.addEventListener("click", () => void sendCoverLetterMessage());
-  clearCoverLetterButton?.addEventListener("click", () => void clearCoverLetterThread());
+  coverLetterAiButton?.addEventListener("click", () => void askCoverLetterAi());
+  clearCoverLetterButton?.addEventListener("click", () => void clearCoverLetterEditor());
   form?.addEventListener("submit", (event) => {
     event.preventDefault();
     void saveData();
@@ -115,11 +131,19 @@ async function saveData(): Promise<void> {
     requirePreview: getChecked("requirePreview"),
   };
 
+  coverLetterWorkspace = {
+    ...coverLetterWorkspace,
+    draft: coverLetterOutput?.value.trim() || undefined,
+    focus: coverLetterFocus?.value.trim() || undefined,
+    messages: undefined,
+  };
+
   await Promise.all([
     saveProfile(cleanObject(profile)),
     saveSettings(cleanObject(settings)),
     saveResumeText(getInputValue("resumeText") ?? ""),
     saveResumeFile(selectedResumeFile),
+    saveCoverLetterWorkspace(coverLetterWorkspace),
   ]);
   setStatus("Saved.");
 }
@@ -172,19 +196,35 @@ async function parseSelectedResumePdf(): Promise<void> {
   setStatus("Parsing resume PDF...");
 
   try {
-    const parsedText = await parseResumePdfWithOpenAI({
+    const parsedResume = await parseResumePdfStructuredWithOpenAI({
       apiKey,
       model: getInputValue("modelName") ?? "gpt-4o-mini",
       resumeFile,
     });
     if (selectedResumeFile !== resumeFile) return;
 
-    setInputValue("resumeText", parsedText);
-    setStatus("Resume PDF parsed. Save to keep the PDF and parsed text.");
+    setInputValue("resumeText", parsedResume.resumeText);
+    const filledCount = fillEmptyProfileFields(parsedResume.profile);
+    setStatus(
+      filledCount
+        ? `Resume PDF parsed. Filled ${filledCount} profile field${filledCount === 1 ? "" : "s"}. Save to keep these changes.`
+        : "Resume PDF parsed. No empty profile fields were filled. Save to keep the PDF and parsed text.",
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to parse resume PDF.";
     setStatus(`${message} The PDF is ready; save it or paste resume text manually.`);
   }
+}
+
+function fillEmptyProfileFields(profile: Partial<UserProfile>): number {
+  let filledCount = 0;
+  for (const field of PROFILE_FIELDS) {
+    const value = profile[field]?.trim();
+    if (!value || getInputValue(field)) continue;
+    setInputValue(field, value);
+    filledCount += 1;
+  }
+  return filledCount;
 }
 
 function clearResumePdf(): void {
@@ -202,32 +242,25 @@ function renderResumeFileStatus(): void {
     : "No PDF selected.";
 }
 
-async function createCoverLetter(): Promise<void> {
-  await runCoverLetterRequest();
-}
-
 async function autoGenerateCoverLetter(): Promise<void> {
   coverLetterWorkspace = { ...coverLetterWorkspace, generateOnOpen: false };
   await saveCoverLetterWorkspace(coverLetterWorkspace);
   await runCoverLetterRequest();
 }
 
-async function sendCoverLetterMessage(): Promise<void> {
-  const message = coverLetterMessage?.value.trim();
-  if (!message) {
-    setStatus("Add a message before sending.");
+async function askCoverLetterAi(): Promise<void> {
+  const instruction = coverLetterMessage?.value.trim();
+  const currentDraft = coverLetterOutput?.value.trim();
+  if (currentDraft && !instruction) {
+    setStatus("Tell AI what to change, or clear the editor to start a fresh draft.");
     return;
   }
 
-  const messages = [...(coverLetterWorkspace.messages ?? []), createCoverLetterMessage("user", message)];
-  coverLetterWorkspace = { ...coverLetterWorkspace, messages };
   if (coverLetterMessage) coverLetterMessage.value = "";
-  await saveCoverLetterWorkspace(coverLetterWorkspace);
-  renderCoverLetterWorkspace();
-  await runCoverLetterRequest();
+  await runCoverLetterRequest(instruction || undefined);
 }
 
-async function runCoverLetterRequest(): Promise<void> {
+async function runCoverLetterRequest(instruction?: string): Promise<void> {
   if (!coverLetterWorkspace.context) {
     setStatus("Preview a page first, then use Generate Cover Letter from the popup.");
     return;
@@ -246,9 +279,15 @@ async function runCoverLetterRequest(): Promise<void> {
   }
 
   const focus = coverLetterFocus?.value.trim();
-  coverLetterWorkspace = { ...coverLetterWorkspace, focus };
+  const currentDraft = instruction ? coverLetterOutput?.value.trim() : undefined;
+  coverLetterWorkspace = {
+    ...coverLetterWorkspace,
+    focus,
+    draft: undefined,
+    messages: undefined,
+  };
   await saveCoverLetterWorkspace(coverLetterWorkspace);
-  setStatus("Generating cover letter...");
+  setStatus(instruction ? "Updating cover letter..." : "Generating cover letter...");
   setCoverLetterBusy(true);
 
   try {
@@ -277,15 +316,17 @@ async function runCoverLetterRequest(): Promise<void> {
       profile,
       resumeText: getInputValue("resumeText") ?? "",
       focus,
-      messages: coverLetterWorkspace.messages ?? [],
+      currentDraft,
+      instruction,
     });
     coverLetterWorkspace = {
       ...coverLetterWorkspace,
-      messages: [...(coverLetterWorkspace.messages ?? []), createCoverLetterMessage("assistant", response)],
+      draft: response,
+      messages: undefined,
     };
     await saveCoverLetterWorkspace(coverLetterWorkspace);
     renderCoverLetterWorkspace();
-    setStatus("Cover letter ready.");
+    setStatus(instruction ? "Cover letter updated." : "Cover letter ready.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to generate cover letter.";
     setStatus(message);
@@ -294,11 +335,12 @@ async function runCoverLetterRequest(): Promise<void> {
   }
 }
 
-async function clearCoverLetterThread(): Promise<void> {
-  coverLetterWorkspace = { ...coverLetterWorkspace, messages: [] };
+async function clearCoverLetterEditor(): Promise<void> {
+  coverLetterWorkspace = { ...coverLetterWorkspace, draft: undefined, messages: undefined };
   await saveCoverLetterWorkspace(coverLetterWorkspace);
+  if (coverLetterMessage) coverLetterMessage.value = "";
   renderCoverLetterWorkspace();
-  setStatus("Cover letter thread cleared.");
+  setStatus("Cover letter editor cleared.");
 }
 
 function renderCoverLetterWorkspace(): void {
@@ -309,32 +351,20 @@ function renderCoverLetterWorkspace(): void {
       : "No preview context yet.";
   }
   if (coverLetterFocus) coverLetterFocus.value = coverLetterWorkspace.focus ?? "";
-
-  const messages = coverLetterWorkspace.messages ?? [];
-  const lastDraft = [...messages].reverse().find((message) => message.role === "assistant")?.content ?? "";
-  if (coverLetterOutput) coverLetterOutput.value = lastDraft;
-  if (!coverLetterThread) return;
-
-  coverLetterThread.innerHTML = "";
-  for (const message of messages) {
-    const item = document.createElement("div");
-    item.className = `thread-message ${message.role}`;
-    item.textContent = `${message.role === "user" ? "You" : "Assistant"}: ${message.content}`;
-    coverLetterThread.append(item);
-  }
+  if (coverLetterOutput) coverLetterOutput.value = coverLetterWorkspace.draft ?? "";
 }
 
-function createCoverLetterMessage(role: CoverLetterMessage["role"], content: string): CoverLetterMessage {
+function normalizeCoverLetterWorkspace(workspace: CoverLetterWorkspace): CoverLetterWorkspace {
+  const legacyDraft = [...(workspace.messages ?? [])].reverse().find((message) => message.role === "assistant")?.content;
   return {
-    role,
-    content,
-    createdAt: new Date().toISOString(),
+    ...workspace,
+    draft: workspace.draft ?? legacyDraft,
+    messages: undefined,
   };
 }
 
 function setCoverLetterBusy(busy: boolean): void {
-  if (generateCoverLetterButton) generateCoverLetterButton.disabled = busy;
-  if (sendCoverLetterMessageButton) sendCoverLetterMessageButton.disabled = busy;
+  if (coverLetterAiButton) coverLetterAiButton.disabled = busy;
 }
 
 function addCustomFieldRow(value: { key?: string; value?: string; aliases?: string[] } = {}): void {

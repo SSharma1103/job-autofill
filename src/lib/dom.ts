@@ -172,7 +172,13 @@ export function highlightElement(el: Element, reason?: string): void {
 }
 
 function fillElement(element: Element, value: string): void {
-  setNativeValue(element, value);
+  const fillValue = coerceFillValue(element, value);
+  if (!fillValue) {
+    highlightElement(element, `Could not safely convert "${value}" for this field. Please review it manually.`);
+    return;
+  }
+
+  setNativeValue(element, fillValue);
 }
 
 function selectElement(element: Element, value: string): void {
@@ -201,6 +207,65 @@ function checkElement(element: Element, value: string): void {
   descriptor?.set?.call(element, true);
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function coerceFillValue(element: Element, value: string): string | undefined {
+  if (!(element instanceof HTMLInputElement) || (element.type !== "number" && element.type !== "range")) {
+    return value;
+  }
+
+  const numericValue = toNumericInputValue(value, element);
+  if (!numericValue) return undefined;
+
+  const number = Number(numericValue);
+  if (Number.isNaN(number)) return undefined;
+
+  const min = element.min ? Number(element.min) : undefined;
+  if (min !== undefined && !Number.isNaN(min) && number < min) return undefined;
+
+  const max = element.max ? Number(element.max) : undefined;
+  if (max !== undefined && !Number.isNaN(max) && number > max) return undefined;
+
+  return numericValue;
+}
+
+function toNumericInputValue(value: string, element: HTMLInputElement): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) return trimmed;
+
+  const normalized = trimmed.toLowerCase();
+  const context = normalizeText([getFieldLabel(element), element.placeholder, element.name, element.id, element.getAttribute("aria-label") ?? ""].join(" "));
+  const numberMatch = normalized.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  if (!numberMatch) return undefined;
+
+  const number = Number(numberMatch[0]);
+  if (Number.isNaN(number)) return undefined;
+
+  const isLpaValue = /\b(?:lpa|lacs?|lakhs?)\b/.test(normalized);
+  if (isLpaValue && !expectsRupeeAmount(context, element)) return formatNumber(number);
+
+  const multiplier = getNumericMultiplier(normalized);
+  return formatNumber(number * multiplier);
+}
+
+function expectsRupeeAmount(context: string, element: HTMLInputElement): boolean {
+  const max = element.max ? Number(element.max) : undefined;
+  if (max !== undefined && !Number.isNaN(max) && max <= 1000) return false;
+  return containsWord(context, "annual") || containsWord(context, "yearly") || containsWord(context, "amount") || containsWord(context, "rupees") || containsWord(context, "inr");
+}
+
+function getNumericMultiplier(value: string): number {
+  if (/\b(?:crore|cr)\b/.test(value)) return 10000000;
+  if (/\b(?:lpa|lacs?|lakhs?)\b/.test(value)) return 100000;
+  const compactSuffix = value.match(/-?\d+(?:\.\d+)?\s*([mk])\b/);
+  if (compactSuffix?.[1] === "m") return 1000000;
+  if (compactSuffix?.[1] === "k") return 1000;
+  return 1;
+}
+
+function formatNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(value).replace(/\.?0+$/, "");
 }
 
 function getOptions(element: Element): string[] | undefined {
@@ -255,6 +320,21 @@ function dataUrlToFile(resumeFile: StoredResumeFile): File {
 
 function compact(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function normalizeText(value?: string): string {
+  return (value ?? "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]/g, " ")
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function containsWord(text: string, word: string): boolean {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|\\s)${escaped}(?:\\s|$)`).test(text);
 }
 
 function cssEscape(value: string): string {
