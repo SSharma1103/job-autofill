@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["sdk/**/*.ts", "examples/**/*.ts", "src/lib/coverLetter.ts", "src/lib/resumeParser.ts"]
+  "include": ["sdk/**/*.ts", "src/lib/coverLetter.ts", "src/lib/resumeParser.ts"]
 }

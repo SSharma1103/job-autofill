@@ -14,7 +14,6 @@ A Chrome extension MVP that detects fields on job application pages, maps them t
 - Uses rule-based profile mapping by default.
 - Optionally uses OpenAI-compatible generation when an API key is saved in the extension settings.
 - Stores profile, resume text, resume PDF, and settings in `chrome.storage.local`.
-- Includes a demo job application page for manual testing.
 - Ships popup, options, and DevTools panel surfaces.
 
 ## Getting Started
@@ -59,10 +58,6 @@ npm test
 
 The source repository intentionally ignores `dist` and `dist-node`; rebuild them locally before loading the extension.
 
-## Demo Page
-
-Open [examples/job-application-demo.html](examples/job-application-demo.html) in Chrome after loading the extension. Use the popup to preview fields or fill the page.
-
 ## Optional AI Setup
 
 Open the extension settings page and save an OpenAI API key plus model name. The key is stored only in `chrome.storage.local` for this MVP and is not committed to the repository.
@@ -76,12 +71,3 @@ Open the extension settings page and save an OpenAI API key plus model name. The
 - `sdk/pipelines/job-application` - reusable job application mapping pipeline
 - `tests` - Node test coverage for the SDK pipeline
 - `public/icons` - Chrome extension icon assets
-
-## GitHub Notes
-
-This repo is ready to push as source code. Build artifacts, dependencies, logs, and local environment files are ignored. Add a remote with:
-
-```bash
-git remote add origin https://github.com/<owner>/<repo>.git
-git push -u origin main
-```
