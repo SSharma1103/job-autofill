@@ -1,0 +1,19 @@
+{
+  "name": "agent-sdk-job-form-filler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "build:extension": "vite build",
+    "build:sdk": "node -e \"require('node:fs').rmSync('dist-node', { recursive: true, force: true })\" && tsc -p tsconfig.node.json",
+    "build": "npm run build:extension && npm run build:sdk",
+    "test": "npm run build:sdk && node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.11"
+  }
+}
